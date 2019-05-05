@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Document</title>
+{#    <link rel="stylesheet" href="/static/bootstrap-3.3.7-dist/css/bootstrap.css">#}
+	<style>
+		.hide{
+			display: none;
+		}
+        /*遮盖层*/
+		.shade{
+			position: fixed;
+			left: 0;
+			right: 0;
+			top: 0;
+			bottom: 0;
+			background: black;
+			opacity: 0.6;	/*透明度*/
+			z-index: 99;
+		}
+        /*显示层*/
+		.add_modal,.edit_modal{
+			position: fixed;
+			height: 300px;
+			width: 500px;
+			top: 100px;
+			left: 50%;
+			z-index: 101;
+			border: 1px solid red;
+			background: white;
+			margin-left: -200px;
+		}
+        .host-tag{
+            display: inline-block;
+            padding: 3px;
+            background: #2e6da4;
+        }
+	</style>
+</head>
+<body>
+	<h1>应用列表</h1>
+	<table border="1">
+		<thead>
+			<tr>
+				<th>应用名称</th>
+				<th>主机列表</th>
+				<th>操作</th>
+			</tr>
+		</thead>
+		<tbody>
+			{% for row in app_list %}
+				<tr del_nid="{{ row.id }}">
+					<td>{{ row.name }}</td>
+                    <td>
+                        {% for host_info in row.r.all %}
+                            <span class="host-tag">{{ host_info.hostname }}</span>
+                        {% endfor %}
+                    </td>
+					<td>
+                        <input class="add_app" type="button" value="添加"/> |
+                        <input class="edit" type="button"  value="编辑"/> |
+                        <input class="del" type="button" value="删除"/>
+                    </td>
+				</tr>
+			{% endfor %}
+		</tbody>
+	</table>
+	<div class="shade hide"></div>
+    <!--添加功能-->
+	<div class="add_modal hide">
+		<form id="add_form" action="/cmdb/add_more_to_more" method="post">
+			<div class="group">应用名称
+				<input id="app_name" type="text" placeholder="应用名称" name="app_name"/>
+{#                <select name="app_name" id="app_name">#}
+{#                    {% for app in app_list %}#}
+{#                        <option>{{ app.name }}</option>#}
+{#                    {% endfor %}#}
+{#                </select>#}
+			</div>
+			<div class="group">主机列表
+				<select id="host_list" name="host_list" multiple>
+					{% for row in host_list %}
+						<option value="{{ row.nid }}">{{ row.hostname }}</option>
+					{% endfor %}
+				</select>
+			</div>
+			<input type="submit" value="提交">
+            <a id="add_ajax_submit">不刷新页面提交数据</a>
+			<input id="add_cancel" type="button" value="取消">
+            <span id="add_erro_msg" style="color: red"></span>
+		</form>
+	</div>
+    <!--编辑功能-->
+    <div class="edit_modal hide">
+		<form id="edit_form" action="/cmdb/host" method="post">
+            <div class="group">
+				<input type="text" style="display: none" placeholder="序列号" name="nid"/>
+			</div>
+			<div class="group">
+				<input type="text" placeholder="主机名" name="hostname"/>
+			</div>
+			<div class="group">
+				<input type="text" placeholder="IP" name="ip"/>
+			</div>
+			<div class="group">
+				<input type="text" placeholder="端口" name="port"/>
+			</div>
+			<div class="group">
+				<select name="module_id">
+					{% for row in busines_list %}
+						<option value="{{ row.id }}">{{ row.caption }}</option>
+					{% endfor %}
+				</select>
+			</div>
+			<input id="edit_add" type="submit" value="确认修改">
+			<input id="edit_cancel" type="button" value="取消">
+		</form>
+	</div>
+    <!--删除功能-->
+    <div class="del_modal" >
+    </div>
+	<script src="/static/jquery-3.1.1.js"></script>
+{#    <script src="/static/bootstrap-3.3.7-dist/js/bootstrap.js"></script>#}
+	<script>
+		$(function(){
+		    //添加功能显示遮罩层和添加的选项
+			$('.add_app').click(function(){
+				$('.shade,.add_modal').removeClass('hide');
+			})
+            //添加功能取消遮罩层和添加的选项
+			$('#add_cancel').click(function(){
+				$('.shade,.add_modal').addClass('hide');
+			})
+            //添加数据
+            $('#add_ajax_submit').click(function(){
+                $.ajax({
+                    url: "/cmdb/add_ajax",
+                    type: "POST",
+                    data: $('#add_form').serialize(),
+                    success: function (data) {
+                        var obj = JSON.parse(data);
+                        if (obj.status){
+                            location.reload();
+                        }else {
+                            $('#erro_msg').text(obj.error)
+                        }
+                    }
+                })
+            })
+            //编辑功能 显示遮罩层和添加的选项
+            /*$('.edit').click(function () {
+                $('.shade,.edit_modal').removeClass('hide');
+                var busines_id = $(this).parent().parent().attr('busines_id');
+                var nid = $(this).parent().parent().attr('host_id');
+                $('#edit_form').find('select').val(busines_id) //获取外键id
+                $('#edit_form').find('input[name="nid"]').val(nid)  //获取nid
+            })
+            //编辑功能 取消遮罩层
+            $('#edit_cancel').click(function () {
+                $('.shade,.edit_modal').addClass('hide');
+            })
+            //编辑数据
+            $('#edit_add').click(function () {
+                $.ajax({
+                    url: 'edit_ajax',
+                    type: 'POST',
+                    data: $('#edit_form').serialize(),
+                    success: function (data) {
+                        var obj = JSON.parse(data);
+                        if(obj.status){
+                            location.reload();
+                        }else{
+                            $('#erro_msg').text(obj.error);
+                        }
+                    }
+                })
+            })*/
+            //删除数据
+            $('.del').click(function () {
+                var del_nid = $(this).parent().parent().attr('del_nid');
+                //alert(del_nid);
+                return del_nid;
+            })
+		})
+	</script>
+</body>
+</html>

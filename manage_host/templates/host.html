@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Document</title>
+{#    <link rel="stylesheet" href="/static/bootstrap-3.3.7-dist/css/bootstrap.css">#}
+	<style>
+		.hide{
+			display: none;
+		}
+        /*遮盖层*/
+		.shade{
+			position: fixed;
+			left: 0;
+			right: 0;
+			top: 0;
+			bottom: 0;
+			background: black;
+			opacity: 0.6;	/*透明度*/
+			z-index: 99;
+		}
+        /*显示层*/
+		.add_modal,.edit_modal{
+			position: fixed;
+			height: 300px;
+			width: 500px;
+			top: 100px;
+			left: 50%;
+			z-index: 101;
+			border: 1px solid red;
+			background: white;
+			margin-left: -200px;
+		}
+	</style>
+</head>
+<body>
+	<h1>主机列表(对象)</h1>
+	<table border="1">
+		<thead>
+			<tr>
+				<th>序列号</th>
+				<th>主机名</th>
+				<th>IP</th>
+				<th>端口</th>
+				<th>业务线名称</th>
+				<th>操作</th>
+			</tr>
+		</thead>
+		<tbody>
+			{% for row in v1 %}
+				<tr host_id="{{ row.nid }}" busines_id="{{ row.module_id }}">
+					<td>{{ forloop.counter }}</td>	<!--显示序号，数据库中的数据改变不会影响显示的顺序，始终从1开始-->
+					<td>{{ row.hostname }}</td>
+					<td>{{ row.ip }}</td>
+					<td>{{ row.port }}</td>
+					<td>{{ row.module.caption }}</td>
+					<td>
+                        <input class="add_host" type="button" value="添加"/> |
+                        <input class="edit" type="button"  value="编辑"/> |
+                        <input class="del" type="button" value="删除"/>
+                    </td>
+				</tr>
+			{% endfor %}
+		</tbody>
+	</table>
+
+	<h1>主机列表(字典)</h1>
+	<table border="1">
+		<thead>
+			<tr>
+				<th>主机名</th>
+				<th>IP</th>
+				<th>端口</th>
+				<th>业务线名称</th>
+			</tr>
+		</thead>
+		<tbody>
+			{% for row in v2 %}
+				<tr host_id="{{ row.nid }}" busines_id="{{ row.module_id }}">
+					<td>{{ row.hostname }}</td>
+					<td>{{ row.ip }}</td>
+					<td>{{ row.port }}</td>
+					<td>{{ row.module__caption }}</td>
+				</tr>
+			{% endfor %}
+		</tbody>
+	</table>
+
+	<h1>主机列表(元祖)</h1>
+	<table border="1">
+		<thead>
+			<tr>
+				<th>主机名</th>
+				<th>IP</th>
+				<th>端口</th>
+				<th>业务线名称</th>
+			</tr>
+		</thead>
+		<tbody>
+			{% for row in v3 %}
+				<tr host_id="{{ row.0 }}" busines_id="{{ row.4 }}">
+					<td>{{ row.1 }}</td>
+					<td>{{ row.2 }}</td>
+					<td>{{ row.3 }}</td>
+					<td>{{ row.6 }}</td>
+				</tr>
+			{% endfor %}
+		</tbody>
+	</table>
+
+	<div class="shade hide"></div>
+    <!--添加功能-->
+	<div class="add_modal hide">
+		<form id="add_form" action="/cmdb/host" method="post">
+			<div class="group">
+				<input id="host" type="text" placeholder="主机名" name="hostname"/>
+			</div>
+			<div class="group">
+				<input id="ip" type="text" placeholder="IP" name="ip"/>
+			</div>
+			<div class="group">
+				<input id="port" type="text" placeholder="端口" name="port"/>
+			</div>
+			<div class="group">
+				<select id="sel" name="module_id">
+					{% for row in busines_list %}
+						<option value="{{ row.id }}">{{ row.caption }}</option>
+					{% endfor %}
+				</select>
+			</div>
+			<input type="submit" value="提交">
+            <a id="ajax_submit">不刷新页面提交数据</a>
+			<input id="cancel" type="button" value="取消">
+            <span id="erro_msg" style="color: red"></span>
+		</form>
+	</div>
+    <!--编辑功能-->
+    <div class="edit_modal hide">
+		<form id="edit_form" action="/cmdb/host" method="post">
+            <div class="group">
+				<input type="text" style="display: none" placeholder="序列号" name="nid"/>
+			</div>
+			<div class="group">
+				<input type="text" placeholder="主机名" name="hostname"/>
+			</div>
+			<div class="group">
+				<input type="text" placeholder="IP" name="ip"/>
+			</div>
+			<div class="group">
+				<input type="text" placeholder="端口" name="port"/>
+			</div>
+			<div class="group">
+				<select name="module_id">
+					{% for row in busines_list %}
+						<option value="{{ row.id }}">{{ row.caption }}</option>
+					{% endfor %}
+				</select>
+			</div>
+			<input id="edit_add" type="submit" value="确认修改">
+			<input id="edit_cancel" type="button" value="取消">
+		</form>
+	</div>
+    <!--删除功能-->
+    <div class="del_modal" >
+    </div>
+	<script src="/static/jquery-3.1.1.js"></script>
+{#    <script src="/static/bootstrap-3.3.7-dist/js/bootstrap.js"></script>#}
+	<script>
+		$(function(){
+		    //添加功能显示遮罩层和添加的选项
+			$('.add_host').click(function(){
+				$('.shade,.add_modal').removeClass('hide');
+			})
+            //添加功能取消遮罩层和添加的选项
+			$('#cancel').click(function(){
+				$('.shade,.add_modal').addClass('hide');
+			})
+            //添加数据
+            $('#ajax_submit').click(function(){
+                $.ajax({
+                    url: "/cmdb/test_ajax",
+                    type: "POST",
+                    //data: {'hostname':$('#host').val(),'ip':$('#ip').val(),'port':$('#port').val(),'module_id':$('#sel').val()},
+                    data: $('#add_form').serialize(),
+                    success: function (data) {
+                        var obj = JSON.parse(data);
+                        if (obj.status){
+                            location.reload();
+                        }else {
+                            $('#erro_msg').text(obj.error)
+                        }
+                    }
+                })
+            })
+            //编辑功能 显示遮罩层和添加的选项
+            $('.edit').click(function () {
+                $('.shade,.edit_modal').removeClass('hide');
+                var busines_id = $(this).parent().parent().attr('busines_id');
+                var nid = $(this).parent().parent().attr('host_id');
+                $('#edit_form').find('select').val(busines_id) //获取外键id
+                $('#edit_form').find('input[name="nid"]').val(nid)  //获取nid
+            })
+            //编辑功能 取消遮罩层
+            $('#edit_cancel').click(function () {
+                $('.shade,.edit_modal').addClass('hide');
+            })
+            //编辑数据
+            $('#edit_add').click(function () {
+                $.ajax({
+                    url: 'edit_ajax',
+                    type: 'POST',
+                    data: $('#edit_form').serialize(),
+                    success: function (data) {
+                        var obj = JSON.parse(data);
+                        if(obj.status){
+                            location.reload();
+                        }else{
+                            $('#erro_msg').text(obj.error);
+                        }
+                    }
+                })
+            })
+            //删除数据
+            /*$('.del').click(function () {
+                var del_nid = $(this).parent().parent().attr('host_id');
+                alert(del_nid)
+            })*/
+		})
+	</script>
+</body>
+</html>
